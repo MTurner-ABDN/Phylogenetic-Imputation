@@ -3,6 +3,31 @@ Code and data for the imputing species trait data using Tabular prior fitted net
 
 In addition to the files used within our study, we also provide the following tutorial for using TabPFN for imputing missing species trait data:
 
-## Installation
+## Prerequisites 
 
-TabPFN is currently available only on Python. See the [official TabPFN GitHub](https://github.com/PriorLabs/TabPFN) for the installation process.
+### Installing TabPFN
+TabPFN is currently available only on Python. See the [official TabPFN GitHub](https://github.com/PriorLabs/TabPFN) for the installation process and their Quick Start guide.
+
+### CUDA
+Running many deep learning models is best done using your computed GPUs rather than CPUs. CUDA is a platform for allowing this, and is recommended to get the best out of TabPFN. A guide for getting set up with CUDA can be found [here](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html).
+
+## TabPFN for trait data imputation
+
+Our tutorial is based on training TabPFN purely on complete cases within an empirical trait dataset.
+
+
+```
+import pandas as pd
+import math
+
+import numpy as np
+import pickle
+import torch
+import gc
+import os
+
+from tabpfn_extensions.post_hoc_ensembles.sklearn_interface import AutoTabPFNRegressor
+from tabpfn import TabPFNRegressor
+from tabpfn.constants import ModelVersion
+import Preprocessing as process_Data
+```
