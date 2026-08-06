@@ -13,9 +13,7 @@ Running many deep learning models is best done using your computed GPUs rather t
 
 ## TabPFN for trait data imputation
 
-Our tutorial is based on training TabPFN purely on complete cases within an empirical trait dataset.
-
-
+Our tutorial is based on training TabPFN purely on complete cases within an empirical trait dataset. You will first need the following packages.
 ```
 import pandas as pd
 import math
@@ -31,3 +29,21 @@ from tabpfn import TabPFNRegressor
 from tabpfn.constants import ModelVersion
 import Preprocessing as process_Data
 ```
+
+
+```
+Imputing species trait data is simple:
+- Preprocess your data
+- Identify complete cases
+- Define and fit your TabPFN model
+- Use this to impute your full dataset
+- Use prior imputations to inform future ones (including in the trait process)
+- Save your multiply imputed datasets
+- Use each for your analyses and pool using Rubin's' Rules
+```
+
+
+
+
+
+
