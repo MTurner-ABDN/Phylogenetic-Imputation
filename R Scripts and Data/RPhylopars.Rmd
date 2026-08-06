@@ -1,0 +1,112 @@
+```{r}
+require(ape)
+require(Rphylopars)
+require(mice)
+require(tidyr)
+library("stringr")
+
+seeds <- c(1,2,3,4,5,6,7,8,9,10)
+missingness <- c(5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80)
+species_num <- c(200, 1000)
+miss_scenarios <- c("MAR", "MNAR", "Mix")
+
+
+groups <-c("Mammals", "Plants")
+
+for (group in groups) {  # Mammals or plants
+  for (species in species_num){  # Number of virtual species
+    for (seed in seeds) {  # Repeats for these simulated species
+
+      gt_path <- paste0("Data/Ground_Truth_data/",group,"/Simulation_",group,"_Seed_",seed,"_",species,".rds", sep="")  # Get ground truth for current group/seed/species_num
+      ground_truth <- readRDS(gt_path)
+
+      if (group == "Mammals"){
+        ground_truth <- ground_truth[[1]][, c(2,4,5,6,7,8,9)]
+      } else {
+        ground_truth <- ground_truth[[1]][, c(2,4,5,6,7,8,9,10)]
+      }
+
+      for (ms in miss_scenarios) {  # missingness scenairo      
+        for (missing in missingness) {  # Missingness rate
+          print(paste0("Working on ",group," ",species," Seed ",seed,", ",ms," at ",missing,"%", sep=""))
+
+          data_path <- paste0("Data/Amputed/",group,"/",ms,"/Missing_",missing,"/Simulated_",group,"_Seed_",seed,"_",species,"_",ms,"_Missing_",missing,".rds", sep="")
+          curr_data <- readRDS(data_path)
+
+          if (group == "Mammals"){
+            n <- 7
+            curr_amputed <- curr_data[[1]][, c(2,4,5,6,7,8,9)]
+          } else {
+            n <- 8
+            curr_amputed <- curr_data[[1]][, c(2,4,5,6,7,8,9,10)]
+          }
+          current_Tree <- curr_data[[2]]
+          rownames(curr_amputed) <- curr_amputed[[1]]
+
+
+          tolerance <- 2  # acceptable range 2%
+          sample_size <- species
+          target_missingness <- as.numeric(missing)
+
+          out_dir <- paste0("Data/Full/",group,"/",ms,"/Missing_",missing,"/", sep="")
+          dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+          gt_out_path <- paste0(out_dir, "Full_Ground_Truth_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,".txt", sep="")  # Sort out these output directories.
+          amputed_out_path <- paste0(out_dir, "Full_Amputed_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,".txt", sep="")
+
+          ground_truth[,c(2:n)] <- round(ground_truth[,c(2:n)], digits = 7)
+          write.table(ground_truth, file = gt_out_path, sep = "\t", quote = FALSE, row.names = FALSE)
+          
+          curr_amputed[,c(2:n)] <- round(curr_amputed[,c(2:n)], digits = 7)
+          write.table(curr_amputed, file = amputed_out_path, sep = "\t", quote = FALSE, row.names = FALSE)
+                      
+
+          #Tree pruning for same 100 species
+          curr_species <- as.character(curr_amputed[[1]])  # Get species names (aka tree tip id's)
+            
+          # Run RPhylopars
+          curr_amputed_for_imputing <- subset(curr_amputed, select = c(1:n))    
+          colnames(curr_amputed_for_imputing)[1] <- "species"
+          curr_amputed_for_imputing[,-1] <- lapply(curr_amputed_for_imputing[,-1], function(x) as.numeric(as.character(x)))
+          
+          curr_amputed_for_imputing <- data.frame(
+            species = curr_amputed_for_imputing$species,
+            dplyr::mutate(
+              curr_amputed_for_imputing[, -1, drop = FALSE],
+              across(everything(), as.numeric)
+            )
+          )
+
+          curr_amputed_for_imputing$species <- as.numeric(str_sub(curr_amputed_for_imputing$species, 2, -1))
+          current_Tree$tip.label <- curr_amputed_for_imputing$species
+
+
+          curr_phylo_run <- tryCatch({
+            phylopars(
+              trait_data = curr_amputed_for_imputing,
+              tree = current_Tree,
+              phylo_correlated = TRUE,
+              pheno_correlated = TRUE
+            )
+          }, error = function(e) {
+            message("phylopars failed: ", e$message)
+            return(NULL)
+          })
+          
+          if (!is.null(curr_phylo_run)) {
+            curr_ImputedDF <- curr_phylo_run$anc_recon[current_Tree$tip.label, ]
+            curr_ImputedDF <- round(curr_ImputedDF, 7)
+            print(curr_ImputedDF)
+            print(rownames(curr_amputed_for_imputing))
+            curr_ImputedDF <- curr_ImputedDF[curr_amputed_for_imputing$species, ]
+          
+            imp_out_path <- paste0(out_dir, "Full_Imputed_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,".txt", sep="")
+            write.table(curr_ImputedDF, file = imp_out_path, sep = "\t", quote = FALSE, row.names = TRUE)
+          }      
+        }
+      }
+    }
+  }
+}
+
+```
