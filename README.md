@@ -1,5 +1,5 @@
 # Phylogenetic-Imputation
-Code and data for the imputing species trait data using Tabular prior fitted networks, and making comparisons to RPhylopars and multiple imputation by chained equations using random forest.
+Code and data for the imputing species trait data using Tabular prior fitted networks, and making comparisons to RPhylopars and multiple imputation by chained equations using random forest. The files "Calcualte_eigenvectors.R" and "Process_PEM.R" were taken from Johnson et al., 2021 and tweaked for our use.
 
 In addition to the files used within our study, we also provide the following tutorial for using TabPFN for imputing missing species trait data:
 
