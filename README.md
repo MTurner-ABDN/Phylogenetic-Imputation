@@ -12,9 +12,34 @@ TabPFN is currently available only on Python. See the [official TabPFN GitHub](h
 Running many deep learning models is best done using your computed GPUs rather than CPUs. CUDA is a platform for allowing this, and is recommended to get the best out of TabPFN. A guide for getting set up with CUDA can be found [here](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html).
 
 ## TabPFN for trait data imputation
-1) With your trait data and accompanying phylogenetic tree compute trait specific phylogenetic eigenvectors using:
+
+### Preprocessing
+1) With a .rds file of your trait data and accompanying phylogenetic tree compute trait specific phylogenetic eigenvectors using:
 ```
-current_rds_path <- paste0("Updated_rds/",group,"/",scenario ,"/Missing_",missingness,"/Simulated_",group,"_Seed_",seed,"_",num,"_",scenario,"_Missing_",missingness,".rds", sep="")
+require(Rphylopars)
+require(phytools)
+require(norm)
+require(caper)
+require(rowr)
+require(plyr)
+require(dplyr)
+require(mice)
+require(MPSEM)
+require(tidyr)
+require(ggplot2)
+require(ggridges)
+require(ggpubr)
+require(progress)
+require(randomForest)
+require(lme4)
+require(lsmeans)
+require(lmerTest)
+require(stringr)
+require(xlsx)
+require(arm)
+library(pdftools)
+
+current_rds_path <- paste0("Path to your tree/trait .rds file here", sep="")
 current_rds <- readRDS(current_rds_path)
 
 # Load current tree and amputed trait data
@@ -22,7 +47,7 @@ Tree <- current_rds[[2]]
 TreeGraph = Phylo2DirectedGraph(Tree)
 A <- current_rds[[1]]
 
-trait_cols <- names(A)[grepl("^V", names(A)) & names(A) != "V1"]  # Find which trait is most complete.
+trait_cols <- "List of your trait names here" 
 trait_stats <- sapply(A[trait_cols], function(x) sum(is.finite(x)))
 most_complete_trait <- names(trait_stats)[which.max(trait_stats)]
 
@@ -47,7 +72,7 @@ for (trait in traits) {
 
     BuildTrimmedPEM = PEM.build(TreeGraph, d = "distance", sp = "species", a = TrimmedPEM$a, psi = TrimmedPEM$psi) # Build trimmed PEM with full TreeGraph but with s and psi from TrimmedPEM
     TrimmedPEM_DF = as.data.frame(BuildTrimmedPEM)
-    to_save_filename <- paste0("../Data/TemporaryData/",group,"/Eigens/",scenario,"/Missing_",missingness ,"/Trimmed_",group,"_Eigens_Seed_",seed,"_",num,"_",scenario,"_missing_",missingness,"_trait_",trait,".rds", sep="")
+    to_save_filename <- paste0("Path to save your phylogenetic eigenvectors .rds file", sep="")
     saveRDS(BuildTrimmedPEM, file = to_save_filename)
   }, error = function(cond){
     print("Error occurred")
@@ -64,29 +89,49 @@ for (trait in traits) {
 
     BuildTrimmedPEM = PEM.build(TreeGraph, d = "distance", sp = "species", a = TrimmedPEM$a, psi = TrimmedPEM$psi) # Build trimmed PEM with full TreeGraph but with s and psi from TrimmedPEM
     TrimmedPEM_DF = as.data.frame(BuildTrimmedPEM)
-    to_save_filename <- paste0("../Data/TemporaryData/",group,"/Eigens/",scenario,"/Missing_",missingness ,"/Trimmed_",group,"_Eigens_Seed_",seed,"_",num,"_",scenario,"_missing_",missingness,"_trait_",trait,".rds", sep="")
+    to_save_filename <- paste0("Path to save your phylogenetic eigenvectors .rds file", sep="")
     saveRDS(BuildTrimmedPEM, file = to_save_filename)
 
     return(NA)
   })
 ```
-
-
-
-
-Our tutorial is based on training TabPFN purely on complete cases within an empirical trait dataset. You will first need the following packages.
+2) Combine your trait data and normalized phylogenetic eigenvectors:
 ```
-pandas 
-math
-numpy 
-gc
-os
-tabpfn
+library("MPSEM")
+normalize <- function(x){
+  return((x - min(x))/ (max(x) - min(x)))
+}
+
+curr_eigens_location <- paste0("Path to your eigenvector .rds file here", sep="")
+curr_eigens <- readRDS(file = curr_eigens_location)
+current_eigen_data <- as.data.frame(curr_eigens$u)
+normalized_eigens <- apply(current_eigen_data, 2, normalize)
+
+# Load corresponding amputed traits
+curr_traits_location <- paste0("Path to your tree/trait .rds file here", sep="")
+curr_traits <- readRDS(file = curr_traits_location)
+curr_traits <- curr_traits[[1]][, c(2,3,4,5,...)]  # Select just your trait data
+
+combined_traits_eigens <- cbind(curr_traits, normalized_eigens)  # Combine 
+
+out_loc <- paste0("Path to your save location here", sep="")
+write.table(x = combined_traits_eigens, file = out_loc, row.names = FALSE, col.names = TRUE, sep = "\t")
+
 ```
+
+### Trait data imputation
+#### Prerequisites 
+
+##### Installing TabPFN
+TabPFN is currently available only on Python. See the [official TabPFN GitHub](https://github.com/PriorLabs/TabPFN) for the installation process and their Quick Start guide.
+
+##### CUDA
+Running many deep learning models is best done using your computed GPUs rather than CPUs. CUDA is a platform for allowing this, and is recommended to get the best out of TabPFN. A guide for getting set up with CUDA can be found [here](https://docs.nvidia.com/cuda/cuda-quick-start-guide/index.html).
+
+3)
 
 Imputing species trait data is simple:
-- Preprocess your data
-  - Compute eigenvectors using 
+- Load trait data and eigenvectors
 - Identify complete cases
 - Define and fit your TabPFN model
 - Use this to impute your full dataset
