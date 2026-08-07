@@ -43,7 +43,7 @@ def TabPFN_Impute():
             n = 7
 
         # Get the baseline/amputed data
-        Ground_Truth = np.genfromtxt(f"Data/Ground_Truth_data/{group}/Trait_data/Simulation_{group}_Seed_{seed}_{species}.txt", delimiter="\t", skip_header=True)  # Get ground truths for ys
+        Ground_Truth = np.genfromtxt(f"Ground_Truth_data/{group}/Trait_data/Simulation_{group}_Seed_{seed}_{species}.txt", delimiter="\t", skip_header=True)  # Get ground truths for ys
         ys = Ground_Truth[:, 1:n + 1]  # Just the traits
         Amputed_dataset = np.genfromtxt(f"Full_eigens/{group}/{scenario}/Missing_{missingness}/Combined_Eigens_traits_Seed_{seed}_{species}_{scenario}_Missing_{missingness}_trait_V2.txt", skip_header=True)
         Amputed_dataset = Amputed_dataset[:, 1:]
@@ -74,7 +74,7 @@ def TabPFN_Impute():
                 print("Num traits: ", n, "feat: ", feat)
                 imputed_feat_list.append(feat)
                 # Get current xs - traits and mask are consistent in feature loop - eigenvectors differ
-                data = np.genfromtxt(f"Full_eigens/{group}/{scenario}/Missing_{missingness}/Combined_Eigens_traits_Seed_{seed}_{species}_{scenario}_Missing_{missingness}_trait_V{feat + 2}.txt",
+                data = np.genfromtxt(f"Combined_RPhylo_Amputed/{group}/{scenario}/Missing_{missingness}/Fully_Combined_Seed_{seed}_{species}_{scenario}_Missing_{missingness}_trait_V{feat + 2}.txt",
                     delimiter="\t")
                 data = data[1:, 1:]
 
@@ -101,7 +101,7 @@ def TabPFN_Impute():
 
                 # Then use this model during testing
                 # Load up and preprocess the test data
-                test_xs = np.genfromtxt(f"Full_eigens/{group}/{scenario}/Missing_{missingness}/Combined_Eigens_traits_Seed_{seed}_{species}_{scenario}_Missing_{missingness}_trait_V{feat + 2}.txt", delimiter="\t")  # Load the amputed data and process
+                test_xs = np.genfromtxt(f"Combined_RPhylo_Amputed/{group}/{scenario}/Missing_{missingness}/Fully_Combined_Seed_{seed}_{species}_{scenario}_Missing_{missingness}_trait_V{feat + 2}.txt", delimiter="\t")  # Load the amputed data and process
                 test_xs = test_xs[1:, 1:]
 
                 #Get mask
@@ -189,9 +189,6 @@ def TabPFN_Impute():
                                 "Current Score": "NA",
                                 "Error?": e
                             })
-
-                #scores = pd.DataFrame(scores)
-                #scores.to_csv(f"Results/Initial_scores_Integrated_TT_{group}_{scenario}_(data_size).csv", index=False)
 
 if __name__ == '__main__':
     TabPFN_Impute()
