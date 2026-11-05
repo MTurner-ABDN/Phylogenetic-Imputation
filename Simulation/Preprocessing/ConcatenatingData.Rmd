@@ -1,0 +1,91 @@
+Packages
+```{r}
+library('hypervolume')
+library('alphahull')
+library('BSDA')
+library('data.table')
+library('cocor')
+library('rmcorr')
+library('MVN')
+require("cocor")
+```
+
+```{r}
+PanTHERIAFrame <- data.frame(read.table(file = 'Data/PanTHERIA_1-0_WR93_Aug2008.txt', header = TRUE, sep = '\t', stringsAsFactors = TRUE))
+AmnioteFrame <- data.frame(read.table(file = 'Data/Amniote.txt', header = TRUE, sep = '\t', stringsAsFactors = TRUE)) 
+CombineFrame <- data.frame(read.csv(file = 'Data/COMBINE.csv', header = TRUE, stringsAsFactors = TRUE)) 
+ErnestFrame <- data.frame(read.table(file = 'Data/Ernest.txt', header = TRUE, sep = '\t', stringsAsFactors = TRUE)) 
+PhylacineFrame <- data.frame(read.csv(file = 'Data/phylacine.csv', header = TRUE, stringsAsFactors = TRUE)) 
+
+# Combine has some duplicate rows
+CombineFrame <- CombineFrame |>
+  dplyr::distinct(binomial, .keep_all = TRUE)
+
+
+# Same species as PANtheria
+PanTHERIAFrame_b <- data.frame(MSW93_Binomial = species_names[, 1]) |>
+  dplyr::left_join(PanTHERIAFrame, by = names(PanTHERIAFrame)[1])
+
+AmnioteFrame_b <- data.frame(binomial = species_names[, 1]) |>
+  dplyr::left_join(AmnioteFrame, by = names(AmnioteFrame)[1])
+
+CombineFrame_b <- data.frame(binomial = species_names[, 1]) |>
+  dplyr::left_join(CombineFrame, by = names(CombineFrame)[1])
+
+ErnestFrame_b <- data.frame(binomial = species_names[, 1]) |>
+  dplyr::left_join(ErnestFrame, by = names(ErnestFrame)[1])
+
+PhylacineFrame_b <- data.frame(Binomial = species_names[, 1]) |>
+  dplyr::left_join(PhylacineFrame, by = names(PhylacineFrame)[1])
+
+
+# Check alignment - All TRUE
+identical(
+  as.character(PanTHERIAFrame_b[, 1]), 
+  as.character(AmnioteFrame_b[, 1])
+)
+identical(
+  as.character(PanTHERIAFrame_b[, 1]), 
+  as.character(CombineFrame_b[, 1])
+)
+identical(
+  as.character(PanTHERIAFrame_b[, 1]), 
+  as.character(ErnestFrame_b[, 1])
+)
+identical(
+  as.character(PanTHERIAFrame_b[, 1]), 
+  as.character(PhylacineFrame_b[, 1])
+)
+
+
+# Fix units
+# Pantheria and Ernest - longevity months  into days
+PanTHERIAFrame_b[, 5] <- PanTHERIAFrame_b[, 5] * 30.44
+ErnestFrame_b[, 5] <- ErnestFrame_b[, 5] * 30.44
+# Amniote - longevity years  into days
+AmnioteFrame_b[, 5] <- AmnioteFrame_b[, 5] * 365
+
+# Remove the species names column
+PanTHERIAFrame_b <- PanTHERIAFrame_b[, c(2:7)]
+AmnioteFrame_b <- AmnioteFrame_b[, c(2:7)]
+CombineFrame_b <- CombineFrame_b[, c(2:7)]
+ErnestFrame_b <- ErnestFrame_b[, c(2:7)]
+PhylacineFrame_b <- PhylacineFrame_b[, c(2:7)]
+
+
+
+# Put all datasets into a list
+Frames <- list(PanTHERIAFrame_b, AmnioteFrame_b, CombineFrame_b, ErnestFrame_b, PhylacineFrame_b)  # add all your datasets here
+
+# Combine them into an array
+data_array <- array(
+  unlist(Frames),
+  dim = c(nrow(Frames[[1]]), ncol(Frames[[1]]), length(Frames))
+)
+
+# Calculate the mean for each cell across all datasets
+Frameconc <- apply(data_array, c(1, 2), mean, na.rm = TRUE)
+
+write.table(Frameconc_temp_2, file = 'Full_Mammals_empirical.txt', col.names = TRUE, row.names = FALSE, sep = "\t")
+```
+

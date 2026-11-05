@@ -1,0 +1,100 @@
+```{r}
+require(ape)
+require(Rphylopars)
+require(mice)
+require(tidyr)
+
+groups <- c("Mammals")
+missingness <- c(5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80)
+species_num <- c(1000)
+seeds <- c(1,2,3,4,5)
+miss_scenarios <- c("MAR")
+
+
+normalize <- function(x){
+  return((x - min(x))/ (max(x) - min(x)))
+}
+
+
+epsilon <- 1e-6  # Precision threshold
+
+cols <- c(1:7) 
+
+for (group in groups){
+  for (species in species_num){
+    for (seed in seeds){
+      gt_path <- paste0("../Simulation/Data/",group,"/Simulation_",group,"_Seed_",seed,"_",species,".rds", sep="")  # Get ground truth for current group/seed/species_num
+      ground_truth <- readRDS(gt_path)
+
+      if (group == "Mammals"){
+        curr_GT <- ground_truth[[1]][, c(2,4,5,6,7,8,9)]  # Get tree tips and simualted traits
+        n <- 7
+      } else {
+        curr_GT <- ground_truth[[1]][, c(2,4,5,6,7,8,9,10)]
+        n <- 8
+      }
+      rownames(curr_GT) <- curr_GT[[1]]  # Set rownames to 'species' names
+
+      for (ms in miss_scenarios){
+        for (missing in missingness){
+          #tryCatch({
+          print(paste0("The current pass is for ",group,", with ",species," species, seed ",seed,", under missingness context: ",ms," at ",missing,"% missing", sep=""))
+
+          temp_path <- paste0("../Data/Amputed_rds/",group,"/",ms,"/Missing_",missing,"/Simulated_",group,"_Seed_",seed,"_",species,"_",ms,"_Missing_",missing,".rds", sep="")  # Read in current amputed
+          temp_amputed <- readRDS(temp_path)
+
+          # Find most complete trait
+          A <- temp_amputed[[1]][, c(4,5,6,7,8,9)]  # Just amputed trait data
+
+          most_complete_col <- as.numeric(which.min(colSums(is.na(A)))) + 1  # Find the most complete trait
+          amp_path <- paste0("../Data/Process_PEM_outs/",group,"/",ms,"/Missing_",missing,"/Amputed_Eigens_for_",group,"_Seed_",seed,"_",species,"_",ms,"_missing_",missing,"_trait_V",most_complete_col,".txt", sep="")
+          curr_amputed <- read.table(amp_path, sep=" ", header=TRUE)  # Current amputed data with eigens from process PEM
+
+          if (group == "Mammals"){
+            n <- 7
+          } else {
+            n <- 8
+          }
+
+          rownames(curr_amputed) <- curr_amputed[[1]]
+
+          out_dir <- paste0("MICE_outs/",group,"/",ms,"/Missing_",missing,"/")
+
+          gt_out_path <- paste0(out_dir, "Full_Ground_Truth_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,".txt", sep="")  # Sort out these output directories.
+          amputed_out_path <- paste0(out_dir, "Full_Amputed_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,".txt", sep="")
+          curr_amputed[,c(2:n)] <- round(curr_amputed[,c(2:n)], digits = 7)  # Round amputed data 
+
+          curr_amputed <- curr_amputed[, c(2:length(curr_amputed))]
+          if (n <= ncol(curr_amputed)) {  # If there are eigenvectors to be normalized
+              curr_amputed[, c(n:ncol(curr_amputed))] <- apply(curr_amputed[, c(n:ncol(curr_amputed)), drop = FALSE], 2, normalize)  # Normalize them column wise
+          }
+
+          method_vec <- rep("rf", length(curr_amputed))  # Check which process to use - default is rf, but use pmm if necessary
+          for (i in c(1:ncol(curr_amputed))){
+            if (sum(is.na(curr_amputed[[i]])) > 0.90 * nrow(curr_amputed)){
+              method_vec[i] <- "pmm"
+            }
+          }
+  
+          curr_MiceOut <- try(mice(curr_amputed, m = 10, method = method_vec, maxit = 10, printFlag = FALSE), silent = TRUE)  # Impute via MICE with 10 x MI
+          if (inherits(curr_MiceOut, "try-error")) {
+            message("Error in scenario ", ms, ", at missingness", missing,": skipping.")
+            next  # skip to next loop iteration
+          }
+        
+
+          # Get the 10 iterations and save them
+          for (itr in c(1:10)){ 
+            temp_imputed <- complete(curr_MiceOut, action = itr, include = FALSE)  # Gets the itr'th complete dataset
+
+            temp_imputed_aligned <- temp_imputed[c(1:(n-1))]  # Just the trait data
+
+            temp_imputed_aligned <- round(temp_imputed_aligned, digits = 7)  # Round to deal with floating point errors
+            write.table(x=temp_imputed_aligned, file = paste0(out_dir, "Full_Imputed_",species,"_Seed_",seed,"_",ms,"_Missing_",missing,"_MI_iteration_",itr,"_subset_eigens.txt", sep=""), quote = FALSE, row.names = FALSE, sep = "\t") 
+          }
+        }
+      }
+    }
+  }
+}
+```
